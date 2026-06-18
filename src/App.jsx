@@ -9,6 +9,7 @@ import MyCollection from "./pages/MyCollection";
 import Spending from "./pages/Spending";
 import AddNewOrder from "./pages/AddNewOrder";
 import AddCollectionItem from "./pages/AddCollectionItem";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -16,16 +17,17 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/payment-reminders" element={<PaymentReminders />} />
-        <Route path="/collection" element={<MyCollection />} />
-        <Route path="/spending" element={<Spending />} />
-        <Route path="/add-order" element={<AddNewOrder />} />
-        <Route path="/add-collection" element={<AddCollectionItem />} />
+
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/payment-reminders" element={<ProtectedRoute><PaymentReminders /></ProtectedRoute>} />
+        <Route path="/collection" element={<ProtectedRoute><MyCollection /></ProtectedRoute>} />
+        <Route path="/spending" element={<ProtectedRoute><Spending /></ProtectedRoute>} />
+        <Route path="/add-order" element={<ProtectedRoute><AddNewOrder /></ProtectedRoute>} />
+        <Route path="/add-collection" element={<ProtectedRoute><AddCollectionItem /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );
 }
 
-export default App; 
+export default App;

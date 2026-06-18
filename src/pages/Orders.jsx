@@ -1,17 +1,18 @@
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 
 function Orders() {
+  const navigate = useNavigate();
+
   return (
     <Layout>
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Orders</h1>
-          <p style={styles.subtitle}>
-            Manage all your BJD presale orders
-          </p>
+          <p style={styles.subtitle}>Manage all your BJD presale orders</p>
         </div>
 
-        <button style={styles.addBtn}>
+        <button style={styles.addBtn} onClick={() => navigate("/add-order")}>
           + Add New Order
         </button>
       </div>
@@ -27,32 +28,32 @@ function Orders() {
       <table style={styles.table}>
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Type</th>
-            <th>Order Date</th>
-            <th>Payment</th>
-            <th>Status</th>
-            <th>Due Date</th>
+            <th style={styles.th}>Item</th>
+            <th style={styles.th}>Type</th>
+            <th style={styles.th}>Order Date</th>
+            <th style={styles.th}>Payment</th>
+            <th style={styles.th}>Status</th>
+            <th style={styles.th}>Due Date</th>
           </tr>
         </thead>
 
         <tbody>
           <tr>
-            <td>Luts 75 Head</td>
-            <td>Head</td>
-            <td>2 January 2026</td>
-            <td>Deposit Paid</td>
-            <td>Awaiting Final</td>
-            <td>5 June 2026</td>
+            <td style={styles.td}>Luts 75 Head</td>
+            <td style={styles.td}>Head</td>
+            <td style={styles.td}>2 January 2026</td>
+            <td style={styles.td}>Deposit Paid</td>
+            <td style={styles.td}>Awaiting Final</td>
+            <td style={styles.td}>5 June 2026</td>
           </tr>
 
           <tr>
-            <td>Eyes 14/6 Xavier</td>
-            <td>Eyes</td>
-            <td>15 February 2026</td>
-            <td>Fully Paid</td>
-            <td>In Production</td>
-            <td>-</td>
+            <td style={styles.td}>Eyes 14/6 Xavier</td>
+            <td style={styles.td}>Eyes</td>
+            <td style={styles.td}>15 February 2026</td>
+            <td style={styles.td}>Fully Paid</td>
+            <td style={styles.td}>In Production</td>
+            <td style={styles.td}>-</td>
           </tr>
         </tbody>
       </table>
@@ -102,6 +103,18 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse"
+  },
+
+  th: {
+    border: "1px solid #999",
+    padding: "10px",
+    textAlign: "left",
+    background: "#f5f5f5"
+  },
+
+  td: {
+    border: "1px solid #999",
+    padding: "10px"
   }
 };
 
