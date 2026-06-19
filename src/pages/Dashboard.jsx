@@ -8,6 +8,15 @@ import {
   query,
   where
 } from "firebase/firestore";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer
+} from "recharts";
 import Layout from "../components/Layout";
 import { auth, db } from "../firebase";
 
@@ -15,12 +24,16 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [username, setUsername] = useState("user");
+  const [orders, setOrders] = useState([]);
   const [activeOrders, setActiveOrders] = useState(0);
   const [upcomingPayments, setUpcomingPayments] = useState(0);
   const [collectionItems, setCollectionItems] = useState(0);
   const [spending, setSpending] = useState(0);
   const [recentReminders, setRecentReminders] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
+
+  const [startDate, setStartDate] = useState("2026-01-01");
+  const [endDate, setEndDate] = useState("2026-12-31");
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -31,71 +44,97 @@ function Dashboard() {
         return;
       }
 
-      try {
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
 
-        if (userDoc.exists()) {
-          setUsername(userDoc.data().name);
-        }
+      if (userDoc.exists()) {
+        setUsername(userDoc.data().name);
+      }
 
-        const ordersQuery = query(
-          collection(db, "orders"),
-          where("userId", "==", currentUser.uid)
-        );
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("userId", "==", currentUser.uid)
+      );
 
-        const ordersSnapshot = await getDocs(ordersQuery);
+      const ordersSnapshot = await getDocs(ordersQuery);
 
-        const orders = ordersSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+      const orderList = ordersSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-        orders.sort((a, b) => {
-          const dateA = a.createdAt?.seconds || 0;
-          const dateB = b.createdAt?.seconds || 0;
-          return dateB - dateA;
-        });
+      orderList.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      });
 
-        const active = orders.filter(
-          (order) => order.status !== "Completed"
-        ).length;
+      setOrders(orderList);
 
-        const upcoming = orders.filter(
+      setActiveOrders(
+        orderList.filter((order) => order.status !== "Completed").length
+      );
+
+      setUpcomingPayments(
+        orderList.filter(
           (order) =>
             order.status !== "Completed" &&
             order.finalDate &&
             order.finalAmount > 0
-        ).length;
+        ).length
+      );
 
-        const totalSpending = orders.reduce(
+      setSpending(
+        orderList.reduce(
           (sum, order) => sum + (Number(order.totalCost) || 0),
           0
-        );
+        )
+      );
 
-        setActiveOrders(active);
-        setUpcomingPayments(upcoming);
-        setSpending(totalSpending);
-        setRecentOrders(orders.slice(0, 2));
-        setRecentReminders(
-          orders
-            .filter((order) => order.finalDate && order.status !== "Completed")
-            .slice(0, 2)
-        );
+      setRecentOrders(orderList.slice(0, 2));
 
-        const collectionQuery = query(
-          collection(db, "collections"),
-          where("userId", "==", currentUser.uid)
-        );
+      setRecentReminders(
+        orderList
+          .filter((order) => order.finalDate && order.status !== "Completed")
+          .slice(0, 2)
+      );
 
-        const collectionSnapshot = await getDocs(collectionQuery);
-        setCollectionItems(collectionSnapshot.size);
-      } catch (error) {
-        console.error(error);
-      }
+      const collectionQuery = query(
+        collection(db, "collections"),
+        where("userId", "==", currentUser.uid)
+      );
+
+      const collectionSnapshot = await getDocs(collectionQuery);
+      setCollectionItems(collectionSnapshot.size);
     };
 
     fetchDashboardData();
   }, [navigate]);
+
+  const spendingData = orders
+    .filter((order) => {
+      if (!order.orderDate) return false;
+      return order.orderDate >= startDate && order.orderDate <= endDate;
+    })
+    .reduce((acc, order) => {
+      const existing = acc.find((item) => item.date === order.orderDate);
+
+      if (existing) {
+        existing.amount += Number(order.totalCost) || 0;
+      } else {
+        acc.push({
+          date: order.orderDate,
+          amount: Number(order.totalCost) || 0
+        });
+      }
+
+      return acc;
+    }, [])
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const selectedRangeTotal = spendingData.reduce(
+    (sum, item) => sum + item.amount,
+    0
+  );
 
   return (
     <Layout>
@@ -119,7 +158,7 @@ function Dashboard() {
         </div>
 
         <div style={styles.card}>
-          <span>Spending</span>
+          <span>Total Spending</span>
           <strong>RM {spending}</strong>
         </div>
       </div>
@@ -128,10 +167,7 @@ function Dashboard() {
         <section style={styles.box}>
           <div style={styles.headerRow}>
             <span>Payment Reminders</span>
-            <span
-              style={styles.viewAll}
-              onClick={() => navigate("/payment-reminders")}
-            >
+            <span style={styles.viewAll} onClick={() => navigate("/payment-reminders")}>
               View All →
             </span>
           </div>
@@ -142,9 +178,7 @@ function Dashboard() {
             recentReminders.map((order) => (
               <div key={order.id} style={styles.item}>
                 <p style={styles.itemTitle}>{order.itemName}</p>
-                <p style={styles.itemText}>
-                  Final payment due: {order.finalDate}
-                </p>
+                <p style={styles.itemText}>Final payment due: {order.finalDate}</p>
                 <hr />
               </div>
             ))
@@ -154,10 +188,7 @@ function Dashboard() {
         <section style={styles.box}>
           <div style={styles.headerRow}>
             <span>Order Status</span>
-            <span
-              style={styles.viewAll}
-              onClick={() => navigate("/orders")}
-            >
+            <span style={styles.viewAll} onClick={() => navigate("/orders")}>
               View All →
             </span>
           </div>
@@ -177,9 +208,52 @@ function Dashboard() {
       </div>
 
       <section style={styles.chartBox}>
-        <h3>Monthly Spending</h3>
-        <div style={styles.chartPlaceholder}>
-          RM {spending}
+        <div style={styles.chartHeader}>
+          <div>
+            <h3 style={styles.chartTitle}>Spending</h3>
+            <p style={styles.chartSubtitle}>
+              Selected range total: RM {selectedRangeTotal}
+            </p>
+          </div>
+
+          <div style={styles.dateControls}>
+            <input
+              type="date"
+              style={styles.dateInput}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+
+            <span>to</span>
+
+            <input
+              type="date"
+              style={styles.dateInput}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={styles.chartArea}>
+          {spendingData.length === 0 ? (
+            <p>No spending data in this date range.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={spendingData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip formatter={(value) => [`RM ${value}`, "Amount"]} />
+                <Line
+                  type="monotone"
+                  dataKey="amount"
+                  strokeWidth={2}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </section>
     </Layout>
@@ -261,21 +335,42 @@ const styles = {
   chartBox: {
     border: "1px solid #999",
     width: "100%",
-    maxWidth: "760px",
-    height: "220px",
+    maxWidth: "850px",
+    minHeight: "330px",
     padding: "18px",
     backgroundColor: "#fff"
   },
 
-  chartPlaceholder: {
-    border: "1px dashed #aaa",
-    height: "140px",
-    marginTop: "20px",
+  chartHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px"
+  },
+
+  chartTitle: {
+    margin: 0
+  },
+
+  chartSubtitle: {
+    margin: "5px 0 0",
+    color: "#555"
+  },
+
+  dateControls: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    fontSize: "24px",
-    fontWeight: "600"
+    gap: "10px"
+  },
+
+  dateInput: {
+    padding: "8px",
+    border: "1px solid #999",
+    borderRadius: "6px"
+  },
+
+  chartArea: {
+    height: "230px"
   }
 };
 

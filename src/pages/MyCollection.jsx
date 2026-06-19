@@ -1,52 +1,109 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import Layout from "../components/Layout";
 
 function MyCollection() {
-  const items = Array(6).fill(null);
+  const navigate = useNavigate();
+
+  const [items, setItems] = useState([]);
+  const [filter, setFilter] = useState("All");
+
+  useEffect(() => {
+    fetchCollectionItems();
+  }, []);
+
+  const fetchCollectionItems = async () => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      navigate("/");
+      return;
+    }
+
+    const q = query(
+      collection(db, "collections"),
+      where("userId", "==", currentUser.uid)
+    );
+
+    const snapshot = await getDocs(q);
+
+    const itemList = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    setItems(itemList);
+  };
+
+  const filteredItems =
+    filter === "All"
+      ? items
+      : items.filter((item) => item.itemType === filter);
+
+  const getCount = (type) => {
+    return items.filter((item) => item.itemType === type).length;
+  };
 
   return (
     <Layout>
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>My Collection</h1>
-          <p style={styles.subtitle}>All your dolls, parts, outfits and accessories in one place</p>
+          <p style={styles.subtitle}>
+            All your dolls, parts, outfits and accessories in one place
+          </p>
         </div>
 
-        <button style={styles.manageBtn}>Manage Item</button>
+        <button style={styles.addBtn} onClick={() => navigate("/add-collection")}>
+          + Item
+        </button>
       </div>
 
       <div style={styles.statsBar}>
-        <span>42 Total</span>
-        <span>8 Full Dolls</span>
-        <span>6 wigs</span>
-        <span>8 eyes</span>
-        <span>14 heads</span>
-        <span>2 body</span>
+        <span>{items.length} Total</span>
+        <span>{getCount("Full Doll")} Full Dolls</span>
+        <span>{getCount("Wig")} Wigs</span>
+        <span>{getCount("Eyes")} Eyes</span>
+        <span>{getCount("Head")} Heads</span>
+        <span>{getCount("Body")} Body</span>
       </div>
 
       <div style={styles.filterRow}>
-        <button style={styles.activeFilter}>All</button>
-        <button style={styles.filter}>Full Dolls</button>
-        <button style={styles.filter}>wigs</button>
-        <button style={styles.filter}>eyes</button>
-        <button style={styles.filter}>heads</button>
-        <button style={styles.filter}>body</button>
-        <button style={styles.addBtn}>+ Item</button>
+        {["All", "Full Doll", "Wig", "Eyes", "Head", "Body"].map((type) => (
+          <button
+            key={type}
+            style={filter === type ? styles.activeFilter : styles.filter}
+            onClick={() => setFilter(type)}
+          >
+            {type}
+          </button>
+        ))}
       </div>
 
       <div style={styles.grid}>
-        {items.map((_, index) => (
-          <div style={styles.card} key={index}>
-            <div style={styles.imageBox}></div>
+        {filteredItems.length === 0 ? (
+          <p>No collection items found.</p>
+        ) : (
+          filteredItems.map((item) => (
+            <div
+              key={item.id}
+              style={styles.card}
+              onClick={() => navigate(`/collection/${item.id}`)}
+            >
+              <div style={styles.imageBox}>No Image</div>
 
-            <p style={styles.itemName}>Item name</p>
-            <p style={styles.shop}>Shop</p>
+              <p style={styles.itemName}>{item.itemName}</p>
+              <p style={styles.shop}>{item.maker}</p>
 
-            <div style={styles.cardBottom}>
-              <span style={styles.tag}>eyes</span>
-              <span>RM 85</span>
+              <div style={styles.cardBottom}>
+                <span style={styles.tag}>{item.itemType}</span>
+                <span>RM {item.purchasePrice}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </Layout>
   );
@@ -69,7 +126,7 @@ const styles = {
     color: "#555"
   },
 
-  manageBtn: {
+  addBtn: {
     padding: "7px 15px",
     border: "1px solid #999",
     background: "white",
@@ -83,14 +140,16 @@ const styles = {
     gap: "22px",
     maxWidth: "720px",
     fontSize: "14px",
-    marginBottom: "18px"
+    marginBottom: "18px",
+    flexWrap: "wrap"
   },
 
   filterRow: {
     display: "flex",
     alignItems: "center",
     gap: "12px",
-    marginBottom: "18px"
+    marginBottom: "18px",
+    flexWrap: "wrap"
   },
 
   filter: {
@@ -109,13 +168,6 @@ const styles = {
     cursor: "pointer"
   },
 
-  addBtn: {
-    padding: "6px 14px",
-    border: "1px solid #999",
-    background: "white",
-    cursor: "pointer"
-  },
-
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(3, 180px)",
@@ -126,14 +178,19 @@ const styles = {
     border: "1px solid #999",
     borderRadius: "10px",
     padding: "10px",
-    background: "white"
+    background: "white",
+    cursor: "pointer"
   },
 
   imageBox: {
     height: "110px",
     border: "1px solid #999",
     background: "#f7f7f7",
-    marginBottom: "10px"
+    marginBottom: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#777"
   },
 
   itemName: {

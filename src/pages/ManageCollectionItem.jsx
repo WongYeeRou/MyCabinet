@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import Layout from "../components/Layout";
 
-function AddCollectionItem() {
+function ManageCollectionItem() {
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [itemName, setItemName] = useState("");
@@ -14,43 +15,65 @@ function AddCollectionItem() {
   const [purchasePrice, setPurchasePrice] = useState("");
   const [notes, setNotes] = useState("");
 
-  const handleAddItem = async () => {
-    const currentUser = auth.currentUser;
+  useEffect(() => {
+    const fetchItem = async () => {
+      const currentUser = auth.currentUser;
 
-    if (!currentUser) {
-      alert("Please login first.");
-      navigate("/");
-      return;
-    }
+      if (!currentUser) {
+        navigate("/");
+        return;
+      }
 
+      const itemDoc = await getDoc(doc(db, "collections", id));
+
+      if (!itemDoc.exists()) {
+        alert("Item not found.");
+        navigate("/collection");
+        return;
+      }
+
+      const data = itemDoc.data();
+
+      if (data.userId !== currentUser.uid) {
+        alert("You do not have permission to manage this item.");
+        navigate("/collection");
+        return;
+      }
+
+      setItemName(data.itemName || "");
+      setMaker(data.maker || "");
+      setItemType(data.itemType || "");
+      setDateAcquired(data.dateAcquired || "");
+      setPurchasePrice(data.purchasePrice || "");
+      setNotes(data.notes || "");
+    };
+
+    fetchItem();
+  }, [id, navigate]);
+
+  const handleUpdate = async () => {
     if (!itemName || !maker || !itemType || !dateAcquired || !purchasePrice) {
       alert("Please fill in all item details.");
       return;
     }
 
-    try {
-      await addDoc(collection(db, "collections"), {
-        userId: currentUser.uid,
-        itemName,
-        maker,
-        itemType,
-        dateAcquired,
-        purchasePrice: Number(purchasePrice),
-        notes,
-        createdAt: serverTimestamp()
-      });
+    await updateDoc(doc(db, "collections", id), {
+      itemName,
+      maker,
+      itemType,
+      dateAcquired,
+      purchasePrice: Number(purchasePrice),
+      notes
+    });
 
-      alert("Collection item added successfully!");
-      navigate("/collection");
-    } catch (error) {
-      alert(error.message);
-    }
+    alert("Item updated successfully.");
+    navigate("/collection");
   };
 
   return (
     <Layout>
-      <h1 style={styles.title}>Add Collection Item</h1>
-      <p style={styles.subtitle}>Log an item you already own into your personal cabinet</p>
+      <h1 style={styles.title}>Manage Collection Item</h1>
+      <p style={styles.subtitle}>Edit selected collection item details</p>
 
       <section style={styles.formBox}>
         <h3 style={styles.sectionTitle}>Item Details</h3>
@@ -66,14 +89,9 @@ function AddCollectionItem() {
         <textarea style={styles.notes} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)}></textarea>
       </section>
 
-      <section style={styles.formBox}>
-        <h3 style={styles.sectionTitle}>Photo</h3>
-        <div style={styles.photoBox}>Photo upload disabled for now</div>
-      </section>
-
       <div style={styles.actions}>
         <button style={styles.btn} onClick={() => navigate("/collection")}>Cancel</button>
-        <button style={styles.btn} onClick={handleAddItem}>Add to Cabinet</button>
+        <button style={styles.btn} onClick={handleUpdate}>Save Changes</button>
       </div>
     </Layout>
   );
@@ -87,9 +105,8 @@ const styles = {
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", marginTop: "20px" },
   input: { padding: "10px 14px", border: "1px solid #999", borderRadius: "8px" },
   notes: { marginTop: "18px", width: "100%", height: "80px", padding: "10px", border: "1px solid #999", borderRadius: "8px", boxSizing: "border-box" },
-  photoBox: { border: "1px solid #999", borderRadius: "8px", height: "110px", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "15px", color: "#666" },
   actions: { width: "660px", display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "20px" },
   btn: { padding: "8px 18px", border: "1px solid #999", borderRadius: "8px", background: "white", cursor: "pointer" }
 };
 
-export default AddCollectionItem;
+export default ManageCollectionItem;
