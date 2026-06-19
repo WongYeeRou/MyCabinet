@@ -200,11 +200,10 @@ function AddNewOrder() {
 
         <select style={styles.statusInput} value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Select Status</option>
-          <option value="Deposit Paid">Deposit Paid</option>
-          <option value="Awaiting Final">Awaiting Final</option>
-          <option value="In Production">In Production</option>
+          <option value="Received">Received</option>
+          <option value="Awaiting Final Payment">Awaiting Final Payment</option>
+          <option value="Awaiting Shipment">Awaiting Shipment</option>
           <option value="Shipped">Shipped</option>
-          <option value="Completed">Completed</option>
         </select>
       </section>
 

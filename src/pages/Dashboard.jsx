@@ -1,26 +1,101 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where
+} from "firebase/firestore";
 import Layout from "../components/Layout";
 import { auth, db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
 
 function Dashboard() {
+  const navigate = useNavigate();
+
   const [username, setUsername] = useState("user");
+  const [activeOrders, setActiveOrders] = useState(0);
+  const [upcomingPayments, setUpcomingPayments] = useState(0);
+  const [collectionItems, setCollectionItems] = useState(0);
+  const [spending, setSpending] = useState(0);
+  const [recentReminders, setRecentReminders] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
 
   useEffect(() => {
-    const getUserName = async () => {
+    const fetchDashboardData = async () => {
       const currentUser = auth.currentUser;
 
-      if (currentUser) {
+      if (!currentUser) {
+        navigate("/");
+        return;
+      }
+
+      try {
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
 
         if (userDoc.exists()) {
           setUsername(userDoc.data().name);
         }
+
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("userId", "==", currentUser.uid)
+        );
+
+        const ordersSnapshot = await getDocs(ordersQuery);
+
+        const orders = ordersSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        orders.sort((a, b) => {
+          const dateA = a.createdAt?.seconds || 0;
+          const dateB = b.createdAt?.seconds || 0;
+          return dateB - dateA;
+        });
+
+        const active = orders.filter(
+          (order) => order.status !== "Completed"
+        ).length;
+
+        const upcoming = orders.filter(
+          (order) =>
+            order.status !== "Completed" &&
+            order.finalDate &&
+            order.finalAmount > 0
+        ).length;
+
+        const totalSpending = orders.reduce(
+          (sum, order) => sum + (Number(order.totalCost) || 0),
+          0
+        );
+
+        setActiveOrders(active);
+        setUpcomingPayments(upcoming);
+        setSpending(totalSpending);
+        setRecentOrders(orders.slice(0, 2));
+        setRecentReminders(
+          orders
+            .filter((order) => order.finalDate && order.status !== "Completed")
+            .slice(0, 2)
+        );
+
+        const collectionQuery = query(
+          collection(db, "collections"),
+          where("userId", "==", currentUser.uid)
+        );
+
+        const collectionSnapshot = await getDocs(collectionQuery);
+        setCollectionItems(collectionSnapshot.size);
+      } catch (error) {
+        console.error(error);
       }
     };
 
-    getUserName();
-  }, []);
+    fetchDashboardData();
+  }, [navigate]);
 
   return (
     <Layout>
@@ -30,22 +105,22 @@ function Dashboard() {
       <div style={styles.cards}>
         <div style={styles.card}>
           <span>Active Orders</span>
-          <strong>5</strong>
+          <strong>{activeOrders}</strong>
         </div>
 
         <div style={styles.card}>
           <span>Upcoming Payments</span>
-          <strong>5</strong>
+          <strong>{upcomingPayments}</strong>
         </div>
 
         <div style={styles.card}>
           <span>Collection Items</span>
-          <strong>5</strong>
+          <strong>{collectionItems}</strong>
         </div>
 
         <div style={styles.card}>
           <span>Spending</span>
-          <strong>RM 100</strong>
+          <strong>RM {spending}</strong>
         </div>
       </div>
 
@@ -53,45 +128,59 @@ function Dashboard() {
         <section style={styles.box}>
           <div style={styles.headerRow}>
             <span>Payment Reminders</span>
-            <span style={styles.viewAll}>View All →</span>
+            <span
+              style={styles.viewAll}
+              onClick={() => navigate("/payment-reminders")}
+            >
+              View All →
+            </span>
           </div>
 
-          <div style={styles.item}>
-            <p style={styles.itemTitle}>Luts - Lishe Head</p>
-            <p style={styles.itemText}>Final payment due: 5 June 2026</p>
-          </div>
-
-          <hr />
-
-          <div style={styles.item}>
-            <p style={styles.itemTitle}>Soom ID75</p>
-            <p style={styles.itemText}>Final payment due: 24 June 2026</p>
-          </div>
+          {recentReminders.length === 0 ? (
+            <p style={styles.itemText}>No upcoming payment reminders.</p>
+          ) : (
+            recentReminders.map((order) => (
+              <div key={order.id} style={styles.item}>
+                <p style={styles.itemTitle}>{order.itemName}</p>
+                <p style={styles.itemText}>
+                  Final payment due: {order.finalDate}
+                </p>
+                <hr />
+              </div>
+            ))
+          )}
         </section>
 
         <section style={styles.box}>
           <div style={styles.headerRow}>
             <span>Order Status</span>
-            <span style={styles.viewAll}>View All →</span>
+            <span
+              style={styles.viewAll}
+              onClick={() => navigate("/orders")}
+            >
+              View All →
+            </span>
           </div>
 
-          <div style={styles.item}>
-            <p style={styles.itemTitle}>Strawberry 3/6 Shirt</p>
-            <p style={styles.itemText}>Deposit Paid</p>
-          </div>
-
-          <hr />
-
-          <div style={styles.item}>
-            <p style={styles.itemTitle}>Soom ID75</p>
-            <p style={styles.itemText}>Awaiting Final Payment</p>
-          </div>
+          {recentOrders.length === 0 ? (
+            <p style={styles.itemText}>No orders found.</p>
+          ) : (
+            recentOrders.map((order) => (
+              <div key={order.id} style={styles.item}>
+                <p style={styles.itemTitle}>{order.itemName}</p>
+                <p style={styles.itemText}>{order.status}</p>
+                <hr />
+              </div>
+            ))
+          )}
         </section>
       </div>
 
       <section style={styles.chartBox}>
         <h3>Monthly Spending</h3>
-        <div style={styles.chartPlaceholder}></div>
+        <div style={styles.chartPlaceholder}>
+          RM {spending}
+        </div>
       </section>
     </Layout>
   );
@@ -181,7 +270,12 @@ const styles = {
   chartPlaceholder: {
     border: "1px dashed #aaa",
     height: "140px",
-    marginTop: "20px"
+    marginTop: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
+    fontWeight: "600"
   }
 };
 

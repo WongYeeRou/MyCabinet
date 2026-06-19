@@ -1,8 +1,67 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  collection,
+  getDocs,
+  query,
+  where
+} from "firebase/firestore";
+import { auth, db } from "../firebase";
 import Layout from "../components/Layout";
 
 function Orders() {
   const navigate = useNavigate();
+
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState("All");
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        navigate("/");
+        return;
+      }
+
+      try {
+        const q = query(
+          collection(db, "orders"),
+          where("userId", "==", currentUser.uid)
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        const orderList = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        orderList.sort((a, b) => {
+          const dateA = a.createdAt?.seconds || 0;
+          const dateB = b.createdAt?.seconds || 0;
+          return dateB - dateA;
+        });
+
+        setOrders(orderList);
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+
+    fetchOrders();
+  }, [navigate]);
+
+  const filteredOrders =
+    filter === "All"
+      ? orders
+      : orders.filter((order) => order.status === filter);
+
+  const getPaymentText = (order) => {
+    if (order.fullPaymentAmount > 0) return "Fully Paid";
+    if (order.depositAmount > 0 && order.finalAmount > 0) return "Deposit Paid";
+    return "-";
+  };
 
   return (
     <Layout>
@@ -18,11 +77,15 @@ function Orders() {
       </div>
 
       <div style={styles.filters}>
-        <button style={styles.filter}>All</button>
-        <button style={styles.filter}>In Production</button>
-        <button style={styles.filter}>Awaiting Final</button>
-        <button style={styles.filter}>Shipped</button>
-        <button style={styles.filter}>Completed</button>
+        {["All", "In Production", "Awaiting Final Payment", "Shipped", "Completed"].map((status) => (
+          <button
+            key={status}
+            style={filter === status ? styles.activeFilter : styles.filter}
+            onClick={() => setFilter(status)}
+          >
+            {status}
+          </button>
+        ))}
       </div>
 
       <table style={styles.table}>
@@ -38,23 +101,24 @@ function Orders() {
         </thead>
 
         <tbody>
-          <tr>
-            <td style={styles.td}>Luts 75 Head</td>
-            <td style={styles.td}>Head</td>
-            <td style={styles.td}>2 January 2026</td>
-            <td style={styles.td}>Deposit Paid</td>
-            <td style={styles.td}>Awaiting Final</td>
-            <td style={styles.td}>5 June 2026</td>
-          </tr>
-
-          <tr>
-            <td style={styles.td}>Eyes 14/6 Xavier</td>
-            <td style={styles.td}>Eyes</td>
-            <td style={styles.td}>15 February 2026</td>
-            <td style={styles.td}>Fully Paid</td>
-            <td style={styles.td}>In Production</td>
-            <td style={styles.td}>-</td>
-          </tr>
+          {filteredOrders.length === 0 ? (
+            <tr>
+              <td style={styles.emptyTd} colSpan="6">
+                No orders found.
+              </td>
+            </tr>
+          ) : (
+            filteredOrders.map((order) => (
+              <tr key={order.id}>
+                <td style={styles.td}>{order.itemName}</td>
+                <td style={styles.td}>{order.itemType}</td>
+                <td style={styles.td}>{order.orderDate || "-"}</td>
+                <td style={styles.td}>{getPaymentText(order)}</td>
+                <td style={styles.td}>{order.status}</td>
+                <td style={styles.td}>{order.finalDate || "-"}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </Layout>
@@ -89,7 +153,8 @@ const styles = {
   filters: {
     display: "flex",
     gap: "10px",
-    marginBottom: "20px"
+    marginBottom: "20px",
+    flexWrap: "wrap"
   },
 
   filter: {
@@ -97,6 +162,14 @@ const styles = {
     border: "1px solid #999",
     borderRadius: "20px",
     background: "white",
+    cursor: "pointer"
+  },
+
+  activeFilter: {
+    padding: "6px 12px",
+    border: "1px solid #999",
+    borderRadius: "20px",
+    background: "#c9c1c1",
     cursor: "pointer"
   },
 
@@ -115,6 +188,12 @@ const styles = {
   td: {
     border: "1px solid #999",
     padding: "10px"
+  },
+
+  emptyTd: {
+    border: "1px solid #999",
+    padding: "20px",
+    textAlign: "center"
   }
 };
 
