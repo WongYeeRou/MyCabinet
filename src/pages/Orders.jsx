@@ -33,8 +33,8 @@ function Orders() {
       const statusOrder = {
         "Awaiting Final Payment": 1,
         "Awaiting Shipment": 2,
-        "Shipped": 3,
-        "Received": 4
+        Shipped: 3,
+        Received: 4
       };
 
       orderList.sort((a, b) => {
@@ -63,30 +63,40 @@ function Orders() {
   }, [navigate]);
 
   const filteredOrders =
-    filter === "All" ? orders : orders.filter((order) => order.status === filter);
+    filter === "All"
+      ? orders
+      : orders.filter((order) => order.status === filter);
 
   const getPaymentText = (order) => {
-  switch (order.status) {
-    case "Awaiting Final Payment":
-      return "Deposit Paid";
+    switch (order.status) {
+      case "Awaiting Final Payment":
+        return "Deposit Paid";
 
-    case "Awaiting Shipment":
-      return "Final Payment Made";
+      case "Awaiting Shipment":
+        return "Final Payment Made";
 
-    case "Shipped":
-      return "Completed";
+      case "Shipped":
+        return "Completed";
 
-    case "Received":
-      return "Completed";
+      case "Received":
+        return "Completed";
 
-    default:
-      return "-";
-  }
-};
+      default:
+        return "-";
+    }
+  };
+
+  const getDueDateText = (order) => {
+    if (order.status === "Awaiting Final Payment") {
+      return order.finalDate || "-";
+    }
+
+    return "-";
+  };
 
   return (
     <Layout>
-      <div style={styles.header}>
+      <div style={styles.pageHeader}>
         <div>
           <h1 style={styles.title}>Orders</h1>
           <p style={styles.subtitle}>Manage all your BJD presale orders</p>
@@ -98,7 +108,13 @@ function Orders() {
       </div>
 
       <div style={styles.filters}>
-        {["All", "Awaiting Final Payment", "Awaiting Shipment", "Shipped", "Received"].map((status) => (
+        {[
+          "All",
+          "Awaiting Final Payment",
+          "Awaiting Shipment",
+          "Shipped",
+          "Received"
+        ].map((status) => (
           <button
             key={status}
             style={filter === status ? styles.activeFilter : styles.filter}
@@ -124,7 +140,9 @@ function Orders() {
         <tbody>
           {filteredOrders.length === 0 ? (
             <tr>
-              <td style={styles.emptyTd} colSpan="6">No orders found.</td>
+              <td style={styles.emptyTd} colSpan="6">
+                No orders found.
+              </td>
             </tr>
           ) : (
             filteredOrders.map((order) => (
@@ -133,16 +151,27 @@ function Orders() {
                 style={styles.clickableRow}
                 onClick={() => navigate(`/orders/${order.id}`)}
               >
-                <td style={styles.td}>{order.itemName}</td>
+                <td style={styles.td}>
+                  <div style={styles.itemCell}>
+                    {order.imageData ? (
+                      <img
+                        src={order.imageData}
+                        alt={order.itemName}
+                        style={styles.orderImage}
+                      />
+                    ) : (
+                      <div style={styles.noImage}>No Image</div>
+                    )}
+
+                    <span>{order.itemName}</span>
+                  </div>
+                </td>
+
                 <td style={styles.td}>{order.itemType}</td>
                 <td style={styles.td}>{order.orderDate || "-"}</td>
                 <td style={styles.td}>{getPaymentText(order)}</td>
                 <td style={styles.td}>{order.status}</td>
-                <td style={styles.td}>
-                  {order.status === "Awaiting Final Payment"
-                    ? order.finalDate || "-"
-                    : "-"}
-                </td>
+                <td style={styles.td}>{getDueDateText(order)}</td>
               </tr>
             ))
           )}
@@ -153,18 +182,107 @@ function Orders() {
 }
 
 const styles = {
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
-  title: { margin: 0 },
-  subtitle: { color: "#666", marginTop: "5px" },
-  addBtn: { padding: "8px 14px", cursor: "pointer", border: "1px solid #999", background: "white", borderRadius: "4px" },
-  filters: { display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" },
-  filter: { padding: "6px 12px", border: "1px solid #999", borderRadius: "20px", background: "white", cursor: "pointer" },
-  activeFilter: { padding: "6px 12px", border: "1px solid #999", borderRadius: "20px", background: "#c9c1c1", cursor: "pointer" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { border: "1px solid #999", padding: "10px", textAlign: "left", background: "#f5f5f5" },
-  td: { border: "1px solid #999", padding: "10px" },
-  emptyTd: { border: "1px solid #999", padding: "20px", textAlign: "center" },
-  clickableRow: { cursor: "pointer" }
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px"
+    
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "30px"
+  },
+
+  subtitle: {
+    color: "#666",
+    marginTop: "5px"
+  },
+
+  addBtn: {
+    padding: "8px 14px",
+    cursor: "pointer",
+    border: "1px solid #999",
+    background: "white",
+    borderRadius: "4px"
+  },
+
+  filters: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "20px",
+    flexWrap: "wrap"
+  },
+
+  filter: {
+    padding: "6px 12px",
+    border: "1px solid #999",
+    borderRadius: "20px",
+    background: "white",
+    cursor: "pointer"
+  },
+
+  activeFilter: {
+    padding: "6px 12px",
+    border: "1px solid #999",
+    borderRadius: "20px",
+    background: "#c9c1c1",
+    cursor: "pointer"
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse"
+  },
+
+  th: {
+    border: "1px solid #999",
+    padding: "10px",
+    textAlign: "left",
+    background: "#f5f5f5"
+  },
+
+  td: {
+    border: "1px solid #999",
+    padding: "10px"
+  },
+
+  emptyTd: {
+    border: "1px solid #999",
+    padding: "20px",
+    textAlign: "center"
+  },
+
+  clickableRow: {
+    cursor: "pointer"
+  },
+
+  itemCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px"
+  },
+
+  orderImage: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "8px",
+    border: "1px solid #ccc"
+  },
+
+  noImage: {
+    width: "60px",
+    height: "60px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    fontSize: "10px",
+    color: "#777"
+  }
 };
 
 export default Orders;

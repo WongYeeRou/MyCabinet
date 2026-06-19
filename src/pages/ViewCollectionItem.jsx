@@ -16,6 +16,7 @@ function ViewCollectionItem() {
   const [dateAcquired, setDateAcquired] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [notes, setNotes] = useState("");
+  const [imageData, setImageData] = useState("");
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -48,19 +49,49 @@ function ViewCollectionItem() {
       setDateAcquired(data.dateAcquired || "");
       setPurchasePrice(data.purchasePrice || "");
       setNotes(data.notes || "");
+      setImageData(data.imageData || "");
     };
 
     fetchItem();
   }, [id, navigate]);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    if (file.size > 700000) {
+      alert("Image is too large. Please choose an image below 700KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      setImageData(reader.result);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async () => {
+    if (!itemName || !maker || !itemType || !dateAcquired || !purchasePrice) {
+      alert("Please fill in all item details.");
+      return;
+    }
+
+    const confirmSave = window.confirm("Are you sure you want to save these changes?");
+
+    if (!confirmSave) return;
+
     await updateDoc(doc(db, "collections", id), {
       itemName,
       maker,
       itemType,
       dateAcquired,
       purchasePrice: Number(purchasePrice),
-      notes
+      notes,
+      imageData
     });
 
     alert("Item updated successfully.");
@@ -75,7 +106,18 @@ function ViewCollectionItem() {
       <section style={styles.formBox}>
         <h3 style={styles.sectionTitle}>Item Details</h3>
 
-        <div style={styles.imageBox}>No Image</div>
+        {imageData ? (
+          <img src={imageData} alt={itemName} style={styles.previewImage} />
+        ) : (
+          <div style={styles.imageBox}>No Image</div>
+        )}
+
+        {editable && (
+          <div style={styles.imageUploadArea}>
+            <input type="file" accept="image/*" onChange={handleImageChange} />
+            <p style={styles.imageHint}>Choose a new image below 700KB.</p>
+          </div>
+        )}
 
         <div style={styles.grid}>
           <input style={styles.input} value={itemName} disabled={!editable} onChange={(e) => setItemName(e.target.value)} />
@@ -102,11 +144,14 @@ function ViewCollectionItem() {
 }
 
 const styles = {
-  title: { margin: 0 },
+  title: { margin: 0 ,fontSize: "30px"},
   subtitle: { marginTop: "5px", color: "#555" },
   formBox: { border: "1px solid #999", borderRadius: "10px", width: "620px", padding: "18px", marginTop: "20px" },
   sectionTitle: { fontSize: "15px", fontWeight: "500", borderBottom: "1px solid #999", paddingBottom: "8px", marginTop: 0 },
-  imageBox: { height: "140px", border: "1px solid #999", marginTop: "15px", marginBottom: "18px", display: "flex", alignItems: "center", justifyContent: "center", color: "#777" },
+  imageBox: { height: "160px", border: "1px solid #999", marginTop: "15px", marginBottom: "18px", display: "flex", alignItems: "center", justifyContent: "center", color: "#777" },
+  previewImage: { width: "180px", height: "180px", objectFit: "cover", border: "1px solid #999", marginTop: "15px", marginBottom: "18px" },
+  imageUploadArea: { marginBottom: "18px" },
+  imageHint: { fontSize: "13px", color: "#666", marginTop: "6px" },
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px" },
   input: { padding: "10px 14px", border: "1px solid #999", borderRadius: "8px" },
   notes: { marginTop: "18px", width: "100%", height: "90px", padding: "10px", border: "1px solid #999", borderRadius: "8px", boxSizing: "border-box" },

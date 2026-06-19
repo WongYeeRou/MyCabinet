@@ -27,7 +27,6 @@ function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.left}>
-        <div style={styles.logo}></div>
 
         <h2>My Cabinet</h2>
 

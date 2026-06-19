@@ -37,7 +37,7 @@ function PaymentReminders() {
         (order) =>
           order.status !== "Awaiting Shipment" &&
           order.status !== "Shipped" &&
-          order.status !== "Arrived"
+          order.status !== "Received"
       )
     );
   };
@@ -107,7 +107,7 @@ function PaymentReminders() {
        </div>
 
         <div style={styles.summaryCard}>
-          Not Urgent
+          Not Urgent<br />
           <strong>{futureOrders.length}</strong>
         </div>
 
@@ -121,7 +121,7 @@ function PaymentReminders() {
         title="URGENT - OVERDUE / WITHIN 7 DAYS"
         orders={urgentOrders}
         getDaysLeft={getDaysLeft}
-        onView={(id) => navigate("/orders")}
+        onView={(id) => navigate(`/orders/${id}`)}
         onMarkAsPaid={handleMarkAsPaid}
       />
 
@@ -129,7 +129,7 @@ function PaymentReminders() {
         title="UPCOMING - DUE WITHIN 30 DAYS"
         orders={upcomingOrders}
         getDaysLeft={getDaysLeft}
-        onView={(id) => navigate("/orders")}
+        onView={(id) => navigate(`/orders/${id}`)}
         onMarkAsPaid={handleMarkAsPaid}
       />
 
@@ -137,7 +137,7 @@ function PaymentReminders() {
         title="WAITING - NO FIXED DEADLINE YET"
         orders={waitingOrders}
         getDaysLeft={getDaysLeft}
-        onView={(id) => navigate("/orders")}
+        onView={(id) => navigate(`/orders/${id}`)}
         onMarkAsPaid={handleMarkAsPaid}
       />
 
@@ -145,7 +145,7 @@ function PaymentReminders() {
         title="NOT URGENT - MORE THAN 30 DAYS"
         orders={futureOrders}
         getDaysLeft={getDaysLeft}
-        onView={(id) => navigate("/orders")}
+        onView={(id) => navigate(`/orders/${id}`)}
         onMarkAsPaid={handleMarkAsPaid}
       />
 
@@ -178,7 +178,11 @@ function ReminderSection({ title, orders, getDaysLeft, onView, onMarkAsPaid }) {
 
           return (
             <div style={styles.reminderCard} key={order.id}>
-              <div style={styles.imageBox}>No Image</div>
+              {order.imageData ? (
+                <img src={order.imageData} alt={order.itemName} style={styles.reminderImage} />
+              ) : (
+                <div style={styles.imageBox}>No Image</div>
+              )}
 
               <div style={styles.info}>
                 <strong>{order.itemName}</strong>
@@ -206,7 +210,7 @@ function ReminderSection({ title, orders, getDaysLeft, onView, onMarkAsPaid }) {
 }
 
 const styles = {
-  title: { marginBottom: "5px" },
+  title: { marginBottom: "5px" , fontSize: "30px"},
   subtitle: { marginTop: 0, color: "#555" },
 
   summaryRow: {
@@ -257,6 +261,13 @@ const styles = {
     justifyContent: "center",
     color: "#777",
     fontSize: "12px"
+  },
+
+  reminderImage: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    border: "1px solid #999"
   },
 
   info: {

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  serverTimestamp,
   collection,
   doc,
   getDoc,
   getDocs,
+  setDoc,
   query,
   where
 } from "firebase/firestore";
@@ -98,6 +100,8 @@ function Dashboard() {
           .slice(0, 2)
       );
 
+      await createPaymentNotifications(currentUser.uid, orderList);
+
       const collectionQuery = query(
         collection(db, "collections"),
         where("userId", "==", currentUser.uid)
@@ -135,6 +139,89 @@ function Dashboard() {
     (sum, item) => sum + item.amount,
     0
   );
+
+  const getDaysLeft = (dateString) => {
+  if (!dateString) return null;
+
+  const today = new Date();
+  const dueDate = new Date(dateString);
+
+  today.setHours(0, 0, 0, 0);
+  dueDate.setHours(0, 0, 0, 0);
+
+  return Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+};
+
+const createPaymentNotifications = async (userId, orderList) => {
+  const notiQuery = query(
+    collection(db, "notifications"),
+    where("userId", "==", userId)
+  );
+
+  const notiSnapshot = await getDocs(notiQuery);
+
+  const existingNotifications = notiSnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  const newUnreadMessages = [];
+
+  for (const order of orderList) {
+    if (order.status !== "Awaiting Final Payment") continue;
+    if (!order.finalDate) continue;
+
+    const daysLeft = getDaysLeft(order.finalDate);
+
+    if (daysLeft === null || daysLeft > 7) continue;
+
+    let message = "";
+
+    if (daysLeft < 0) {
+      message = `${order.itemName} final payment is overdue by ${Math.abs(daysLeft)} day(s).`;
+    } else if (daysLeft === 0) {
+      message = `${order.itemName} final payment is due today.`;
+    } else {
+      message = `${order.itemName} final payment is due in ${daysLeft} day(s).`;
+    }
+
+    const alreadyExists = existingNotifications.some(
+      (noti) =>
+        noti.orderId === order.id &&
+        noti.finalDate === order.finalDate
+    );
+
+    if (!alreadyExists) {
+      const notificationId = `${order.id}_${order.finalDate}`;
+
+      await setDoc(doc(db, "notifications", notificationId), {
+        userId,
+        orderId: order.id,
+        itemName: order.itemName,
+        finalDate: order.finalDate,
+        message,
+        isRead: false,
+        createdAt: serverTimestamp()
+      });
+      newUnreadMessages.push(message);
+    }
+
+    const unreadExisting = existingNotifications.find(
+      (noti) =>
+        noti.orderId === order.id &&
+        noti.finalDate === order.finalDate &&
+        noti.isRead === false
+    );
+
+    if (unreadExisting) {
+      newUnreadMessages.push(unreadExisting.message);
+    }
+  }
+
+  if (newUnreadMessages.length > 0) {
+    alert("Payment Reminder:\n\n" + newUnreadMessages.join("\n"));
+  }
+};
 
   return (
     <Layout>

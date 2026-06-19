@@ -13,7 +13,7 @@ import AddCollectionItem from "./pages/AddCollectionItem";
 import ViewCollectionItem from "./pages/ViewCollectionItem";
 import ManageCollectionItem from "./pages/ManageCollectionItem";
 import ProtectedRoute from "./components/ProtectedRoute";
-
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -32,6 +32,7 @@ function App() {
         <Route path="/add-collection" element={<ProtectedRoute><AddCollectionItem /></ProtectedRoute>} />
         <Route path="/collection/:id" element={<ProtectedRoute><ViewCollectionItem /></ProtectedRoute>} />
         <Route path="/manage-collection/:id" element={<ProtectedRoute><ManageCollectionItem /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         
       </Routes>
     </BrowserRouter>

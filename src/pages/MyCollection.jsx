@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import Layout from "../components/Layout";
+import CategoryDropdown from "../components/CategoryDropdown";
 
 function MyCollection() {
   const navigate = useNavigate();
-
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState("All");
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     fetchCollectionItems();
@@ -48,7 +49,7 @@ function MyCollection() {
 
   return (
     <Layout>
-      <div style={styles.header}>
+      <div style={styles.pageHeader}>
         <div>
           <h1 style={styles.title}>My Collection</h1>
           <p style={styles.subtitle}>
@@ -61,25 +62,25 @@ function MyCollection() {
         </button>
       </div>
 
+
       <div style={styles.statsBar}>
         <span>{items.length} Total</span>
-        <span>{getCount("Full Doll")} Full Dolls</span>
-        <span>{getCount("Wig")} Wigs</span>
-        <span>{getCount("Eyes")} Eyes</span>
-        <span>{getCount("Head")} Heads</span>
-        <span>{getCount("Body")} Body</span>
+
+         {categories.map((cat) => (
+          <span key={cat.id}>
+            {getCount(cat.name)} {cat.name}
+          </span>
+        ))}
       </div>
 
+  
       <div style={styles.filterRow}>
-        {["All", "Full Doll", "Wig", "Eyes", "Head", "Body"].map((type) => (
-          <button
-            key={type}
-            style={filter === type ? styles.activeFilter : styles.filter}
-            onClick={() => setFilter(type)}
-          >
-            {type}
-          </button>
-        ))}
+        <CategoryDropdown
+          value={filter}
+          onChange={setFilter}
+          includeAll={true}
+          onCategoriesChange={setCategories}
+        />
       </div>
 
       <div style={styles.grid}>
@@ -92,7 +93,11 @@ function MyCollection() {
               style={styles.card}
               onClick={() => navigate(`/collection/${item.id}`)}
             >
-              <div style={styles.imageBox}>No Image</div>
+              {item.imageData ? (
+                <img src={item.imageData} alt={item.itemName} style={styles.itemImage} />
+              ) : (
+                <div style={styles.imageBox}>No Image</div>
+              )}
 
               <p style={styles.itemName}>{item.itemName}</p>
               <p style={styles.shop}>{item.maker}</p>
@@ -110,110 +115,22 @@ function MyCollection() {
 }
 
 const styles = {
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "18px"
-  },
-
-  title: {
-    margin: 0
-  },
-
-  subtitle: {
-    marginTop: "5px",
-    color: "#555"
-  },
-
-  addBtn: {
-    padding: "7px 15px",
-    border: "1px solid #999",
-    background: "white",
-    cursor: "pointer"
-  },
-
-  statsBar: {
-    border: "1px solid #999",
-    padding: "10px",
-    display: "flex",
-    gap: "22px",
-    maxWidth: "720px",
-    fontSize: "14px",
-    marginBottom: "18px",
-    flexWrap: "wrap"
-  },
-
-  filterRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    marginBottom: "18px",
-    flexWrap: "wrap"
-  },
-
-  filter: {
-    padding: "6px 18px",
-    borderRadius: "20px",
-    border: "1px solid #999",
-    background: "white",
-    cursor: "pointer"
-  },
-
-  activeFilter: {
-    padding: "6px 18px",
-    borderRadius: "20px",
-    border: "1px solid #999",
-    background: "#d6d0d0",
-    cursor: "pointer"
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 180px)",
-    gap: "18px"
-  },
-
-  card: {
-    border: "1px solid #999",
-    borderRadius: "10px",
-    padding: "10px",
-    background: "white",
-    cursor: "pointer"
-  },
-
-  imageBox: {
-    height: "110px",
-    border: "1px solid #999",
-    background: "#f7f7f7",
-    marginBottom: "10px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#777"
-  },
-
-  itemName: {
-    margin: "0 0 3px 0",
-    fontWeight: "600"
-  },
-
-  shop: {
-    margin: "0 0 8px 0"
-  },
-
-  cardBottom: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "14px"
-  },
-
-  tag: {
-    border: "1px solid #999",
-    borderRadius: "20px",
-    padding: "3px 10px"
-  }
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" },
+  title: { margin: 0, fontSize: "30px" },
+  subtitle: { marginTop: "5px", color: "#555" },
+  addBtn: { padding: "7px 15px", border: "1px solid #999", background: "white", cursor: "pointer" },
+  statsBar: { border: "1px solid #999", padding: "10px", display: "flex", gap: "22px", maxWidth: "720px", fontSize: "14px", marginBottom: "18px", flexWrap: "wrap" },
+  filterRow: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px", flexWrap: "wrap" },
+  filter: { padding: "6px 18px", borderRadius: "20px", border: "1px solid #999", background: "white", cursor: "pointer" },
+  activeFilter: { padding: "6px 18px", borderRadius: "20px", border: "1px solid #999", background: "#d6d0d0", cursor: "pointer" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(3, 180px)", gap: "18px" },
+  card: { border: "1px solid #999", borderRadius: "10px", padding: "10px", background: "white", cursor: "pointer" },
+  imageBox: { height: "110px", border: "1px solid #999", background: "#f7f7f7", marginBottom: "10px", display: "flex", alignItems: "center", justifyContent: "center", color: "#777" },
+  itemImage: { width: "100%", height: "110px", objectFit: "cover", border: "1px solid #999", marginBottom: "10px" },
+  itemName: { margin: "0 0 3px 0", fontWeight: "600" },
+  shop: { margin: "0 0 8px 0" },
+  cardBottom: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "14px" },
+  tag: { border: "1px solid #999", borderRadius: "20px", padding: "3px 10px" }
 };
 
 export default MyCollection;

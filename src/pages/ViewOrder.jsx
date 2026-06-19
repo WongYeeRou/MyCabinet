@@ -27,6 +27,7 @@ function ViewOrder() {
   const [itemType, setItemType] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [imageData, setImageData] = useState("");
 
   const [fullPaymentAmount, setFullPaymentAmount] = useState("");
   const [fullPaymentDate, setFullPaymentDate] = useState("");
@@ -72,6 +73,7 @@ function ViewOrder() {
       setItemType(data.itemType || "");
       setOrderDate(data.orderDate || "");
       setNotes(data.notes || "");
+      setImageData(data.imageData || "");
 
       setFullPaymentAmount(data.fullPaymentAmount || "");
       setFullPaymentDate(data.fullPaymentDate || "");
@@ -84,6 +86,25 @@ function ViewOrder() {
 
     fetchOrder();
   }, [id, navigate]);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    if (file.size > 700000) {
+      alert("Image is too large. Please choose an image below 700KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      setImageData(reader.result);
+    };
+
+    reader.readAsDataURL(file);
+  };
 
   const checkCollectionDuplicate = async () => {
     const q = query(
@@ -112,6 +133,7 @@ function ViewOrder() {
       dateAcquired: new Date().toISOString().slice(0, 10),
       purchasePrice: Number(totalCost) || 0,
       notes,
+      imageData,
       createdAt: serverTimestamp()
     });
 
@@ -134,6 +156,7 @@ function ViewOrder() {
       itemType,
       orderDate,
       notes,
+      imageData,
       fullPaymentAmount: Number(fullPaymentAmount) || 0,
       fullPaymentDate,
       depositAmount: Number(depositAmount) || 0,
@@ -177,7 +200,18 @@ function ViewOrder() {
       <section style={styles.formBox}>
         <h3 style={styles.sectionTitle}>Item Details</h3>
 
-        <div style={styles.imageBox}>No Image</div>
+        {imageData ? (
+          <img src={imageData} alt={itemName} style={styles.previewImage} />
+        ) : (
+          <div style={styles.imageBox}>No Image</div>
+        )}
+
+        {editable && (
+          <div style={styles.imageUploadArea}>
+            <input type="file" accept="image/*" onChange={handleImageChange} />
+            <p style={styles.imageHint}>Choose a new image below 700KB.</p>
+          </div>
+        )}
 
         <div style={styles.grid}>
           <input style={styles.input} value={itemName} disabled={!editable} onChange={(e) => setItemName(e.target.value)} />
@@ -247,11 +281,14 @@ function ViewOrder() {
 }
 
 const styles = {
-  title: { margin: 0 },
+  title: { margin: 0 ,fontSize: "30px"},
   subtitle: { marginTop: "5px", color: "#555" },
   formBox: { border: "1px solid #999", borderRadius: "10px", width: "700px", padding: "18px", marginTop: "20px" },
   sectionTitle: { fontSize: "15px", fontWeight: "500", borderBottom: "1px solid #999", paddingBottom: "8px", marginTop: 0 },
-  imageBox: { height: "120px", border: "1px solid #999", marginTop: "15px", marginBottom: "18px", display: "flex", alignItems: "center", justifyContent: "center", color: "#777" },
+  imageBox: { height: "160px", border: "1px solid #999", marginTop: "15px", marginBottom: "18px", display: "flex", alignItems: "center", justifyContent: "center", color: "#777" },
+  previewImage: { width: "180px", height: "180px", objectFit: "cover", border: "1px solid #999", marginTop: "15px", marginBottom: "18px" },
+  imageUploadArea: { marginBottom: "18px" },
+  imageHint: { fontSize: "13px", color: "#666", marginTop: "6px" },
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px" },
   input: { padding: "10px 14px", border: "1px solid #999", borderRadius: "8px" },
   notes: { marginTop: "18px", width: "100%", height: "80px", padding: "10px", border: "1px solid #999", borderRadius: "8px", boxSizing: "border-box" },
